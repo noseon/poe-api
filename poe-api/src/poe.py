@@ -194,8 +194,12 @@ class Client:
     next_data = json.loads(json_text)
 
     if overwrite_vars:
-      self.formkey = self.extract_formkey(r.text)
-      self.viewer = next_data["props"]["pageProps"]["payload"]["viewer"]
+      self.formkey = self.extract_formkey(r.text)      
+      try:
+          self.viewer = next_data["props"]["pageProps"]["payload"]["viewer"]        
+      except KeyError:
+          self.viewer = next_data["props"]["pageProps"]["data"]["viewer"]
+        
       self.user_id = self.viewer["poeUser"]["id"]
       self.next_data = next_data
 
@@ -205,8 +209,12 @@ class Client:
     url = f'https://poe.com/_next/data/{self.next_data["buildId"]}/{display_name}.json'
     
     r = request_with_retries(self.session.get, url)
+    try:
+        chat_data = r.json()["pageProps"]["payload"]["chatOfBotDisplayName"]
+    except KeyError:
+        chat_data = r.json()["pageProps"]["data"]["chatOfBotDisplayName"]
 
-    chat_data = r.json()["pageProps"]["payload"]["chatOfBotDisplayName"]
+    
     return chat_data
     
   def get_bots(self, download_next_data=True):
@@ -259,12 +267,20 @@ class Client:
     if not end_cursor:
       url = f'https://poe.com/_next/data/{self.next_data["buildId"]}/explore_bots.json'
       r = request_with_retries(self.session.get, url)
-      nodes = r.json()["pageProps"]["payload"]["exploreBotsConnection"]["edges"]
+
+      try:
+          nodes = r.json()["pageProps"]["payload"]["exploreBotsConnection"]["edges"]
+      except KeyError:
+          nodes = r.json()["pageProps"]["data"]["exploreBotsConnection"]["edges"]
+      
       bots = [node["node"] for node in nodes]
       bots = bots[:count]
       return {
         "bots": bots,
-        "end_cursor": r.json()["pageProps"]["payload"]["exploreBotsConnection"]["pageInfo" ]["endCursor"],
+        try:
+            "end_cursor": r.json()["pageProps"]["payload"]["exploreBotsConnection"]["pageInfo" ]["endCursor"],
+        except KeyError:
+            "end_cursor": r.json()["pageProps"]["data"]["exploreBotsConnection"]["pageInfo" ]["endCursor"],
       }
 
     else:
